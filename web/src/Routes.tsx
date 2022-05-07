@@ -13,6 +13,7 @@ import TopicsLayout from 'src/layouts/TopicsLayout'
 const Routes = () => {
   return (
     <Router>
+      <Route path="/" page={HomePage} name="home" />
       <Set wrap={TopicsLayout}>
         <Route path="/topics/new" page={TopicNewTopicPage} name="newTopic" />
         <Route path="/topics/{id:Int}/edit" page={TopicEditTopicPage} name="editTopic" />
