@@ -2,6 +2,8 @@ export const schema = gql`
   type Topic {
     id: Int!
     title: String!
+    content: String!
+    authorId: Int!
   }
 
   type Query {
@@ -11,6 +13,8 @@ export const schema = gql`
 
   input CreateTopicInput {
     title: String!
+    content: String!
+    authorId: Int!
   }
 
   input UpdateTopicInput {
