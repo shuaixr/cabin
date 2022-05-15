@@ -1,5 +1,5 @@
-import { APIGatewayProxyHandler } from 'aws-lambda'
 import { AuthHandler } from 'src/lib/authHandler'
+import { APIGatewayProxyHandler } from 'src/lib/handler'
 import { useMidleware } from 'src/lib/middleware'
 export const handler: APIGatewayProxyHandler = useMidleware(
   async (event, context) => {
@@ -30,7 +30,6 @@ export const handler: APIGatewayProxyHandler = useMidleware(
         allowReusedPassword: true,
       },
     })
-
     return await authHandler.invoke()
   }
 )

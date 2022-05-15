@@ -1,4 +1,4 @@
-import { APIGatewayProxyHandler } from 'aws-lambda'
+import { APIGatewayProxyHandler } from '../handler'
 import { httpExceptionMiddleware } from '../httpExceptionMiddleware'
 
 export type MiddlewareHandler = (
