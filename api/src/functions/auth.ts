@@ -1,7 +1,7 @@
-import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
+import { APIGatewayProxyHandler } from 'aws-lambda'
 import { AuthHandler } from 'src/lib/authHandler'
 import { useMidleware } from 'src/lib/middleware'
-export const handler: APIGatewayProxyHandlerV2 = useMidleware(
+export const handler: APIGatewayProxyHandler = useMidleware(
   async (event, context) => {
     const authHandler = new AuthHandler(event, context, {
       // Specifies attributes on the cookie that dbAuth sets in order to remember

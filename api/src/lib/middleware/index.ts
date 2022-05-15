@@ -1,9 +1,9 @@
-import { APIGatewayProxyHandlerV2 } from 'aws-lambda'
+import { APIGatewayProxyHandler } from 'aws-lambda'
 import { httpExceptionMiddleware } from '../httpExceptionMiddleware'
 
 export type MiddlewareHandler = (
-  handler: APIGatewayProxyHandlerV2
-) => APIGatewayProxyHandlerV2
+  handler: APIGatewayProxyHandler
+) => APIGatewayProxyHandler
 
 export const makeMiddleware = (
   ...list: MiddlewareHandler[]

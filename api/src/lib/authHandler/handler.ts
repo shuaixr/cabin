@@ -4,21 +4,21 @@ import {
   CorsContext,
   CorsHeaders,
   createCorsContext,
+  normalizeRequest,
 } from '@redwoodjs/api'
 import {
   decryptSession,
   getSession,
 } from '@redwoodjs/api/dist/functions/dbAuth/shared'
 import type {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyResultV2 as APIGatewayProxyResult,
+  APIGatewayProxyEvent,
+  APIGatewayProxyResult,
   Context as LambdaContext,
 } from 'aws-lambda'
 import CryptoJS from 'crypto-js'
 import md5 from 'md5'
 import { v4 as uuidv4 } from 'uuid'
 import { db } from '../db'
-import { normalizeRequest } from '../transforms'
 import {
   CsrfTokenMismatchError,
   DuplicateEmailError,
@@ -148,7 +148,7 @@ type Params = {
 }
 
 export class AuthHandler {
-  event: APIGatewayProxyEventV2
+  event: APIGatewayProxyEvent
   context: LambdaContext
   options: AuthHandlerOptions
   params: Params
@@ -206,7 +206,7 @@ export class AuthHandler {
   }
 
   constructor(
-    event: APIGatewayProxyEventV2,
+    event: APIGatewayProxyEvent,
     context: LambdaContext,
     options: AuthHandlerOptions
   ) {
@@ -281,7 +281,7 @@ export class AuthHandler {
 
     // make sure it's using the correct verb, GET vs POST
 
-    if (this.event.requestContext.http.method !== AuthHandler.VERBS[method]) {
+    if (this.event.httpMethod !== AuthHandler.VERBS[method]) {
       throw new UnknownAuthMethodError(method)
       // return this._buildResponseWithCorsHeaders(this._notFound(), corsHeaders)
     }
@@ -796,12 +796,12 @@ export class AuthHandler {
 
   _buildResponseWithCorsHeaders(
     response: {
-      body?: string
+      body: string
       statusCode: number
       headers?: Record<string, string>
     },
     corsHeaders: CorsHeaders
-  ) {
+  ): APIGatewayProxyResult {
     return {
       ...response,
       headers: {
