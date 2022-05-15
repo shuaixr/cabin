@@ -14124,6 +14124,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"http-status-codes@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "http-status-codes@npm:2.2.0"
+  checksum: 774b45a13af9920c915f91878c74056886fee0e4342771c0db68015475e990552b968db999a6f5bbb87db8acddd65f1f28a13a3bb45f9998e9b11c47e119b5b4
+  languageName: node
+  linkType: hard
+
 "https-browserify@npm:^1.0.0":
   version: 1.0.0
   resolution: "https-browserify@npm:1.0.0"
@@ -20799,6 +20806,7 @@ __metadata:
     "@emotion/styled": ^11.8.1
     "@mui/material": ^5.6.4
     "@redwoodjs/core": ^1.4.0
+    http-status-codes: ^2.2.0
     prisma: ^3.13.0
   languageName: unknown
   linkType: soft

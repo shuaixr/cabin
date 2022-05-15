@@ -4,21 +4,24 @@ import {
   CorsContext,
   CorsHeaders,
   createCorsContext,
-  normalizeRequest,
 } from '@redwoodjs/api'
 import {
   decryptSession,
   getSession,
 } from '@redwoodjs/api/dist/functions/dbAuth/shared'
-import type { APIGatewayProxyEvent, Context as LambdaContext } from 'aws-lambda'
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyResultV2 as APIGatewayProxyResult,
+  Context as LambdaContext,
+} from 'aws-lambda'
 import CryptoJS from 'crypto-js'
 import md5 from 'md5'
 import { v4 as uuidv4 } from 'uuid'
 import { db } from '../db'
+import { normalizeRequest } from '../transforms'
 import {
   CsrfTokenMismatchError,
-  DuplicateUsernameError,
-  FieldRequiredError,
+  DuplicateEmailError,
   GenericError,
   IncorrectPasswordError,
   NoSessionExpirationError,
@@ -31,11 +34,10 @@ import {
   ResetTokenRequiredError,
   ReusedPasswordError,
   SessionDecryptionError,
-  UsernameAndPasswordRequiredError,
+  UnknownAuthMethodError,
   UsernameNotFoundError,
-  UsernameRequiredError,
+  EmailRequiredError,
   UserNotFoundError,
-  WrongVerbError,
 } from './errors'
 
 interface AuthHandlerOptions {
@@ -178,7 +180,7 @@ type Params = {
 }
 
 export class AuthHandler {
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEventV2
   context: LambdaContext
   options: AuthHandlerOptions
   params: Params
@@ -236,7 +238,7 @@ export class AuthHandler {
   }
 
   constructor(
-    event: APIGatewayProxyEvent,
+    event: APIGatewayProxyEventV2,
     context: LambdaContext,
     options: AuthHandlerOptions
   ) {
@@ -276,7 +278,7 @@ export class AuthHandler {
 
   // Actual function that triggers everything else to happen: `login`, `signup`,
   // etc. is called from here, after some checks to make sure the request is good
-  async invoke() {
+  async invoke(): Promise<APIGatewayProxyResult> {
     const request = normalizeRequest(this.event)
     let corsHeaders = {}
     if (this.corsContext) {
@@ -299,31 +301,35 @@ export class AuthHandler {
         corsHeaders
       )
     }
+    /*
+    try {*/
+    const method = this._getAuthMethod()
 
-    try {
-      const method = this._getAuthMethod()
+    // get the auth method the incoming request is trying to call
+    if (!AuthHandler.METHODS.includes(method)) {
+      throw new UnknownAuthMethodError(method)
+      // return this._buildResponseWithCorsHeaders(this._notFound(), corsHeaders)
+    }
 
-      // get the auth method the incoming request is trying to call
-      if (!AuthHandler.METHODS.includes(method)) {
-        return this._buildResponseWithCorsHeaders(this._notFound(), corsHeaders)
-      }
+    // make sure it's using the correct verb, GET vs POST
 
-      // make sure it's using the correct verb, GET vs POST
-      if (this.event.httpMethod !== AuthHandler.VERBS[method]) {
-        return this._buildResponseWithCorsHeaders(this._notFound(), corsHeaders)
-      }
+    if (this.event.requestContext.http.method !== AuthHandler.VERBS[method]) {
+      throw new UnknownAuthMethodError(method)
+      // return this._buildResponseWithCorsHeaders(this._notFound(), corsHeaders)
+    }
 
-      // call whatever auth method was requested and return the body and headers
-      const {
-        body,
-        headers,
-        options = { statusCode: 200 },
-      } = await this[method]()
+    // call whatever auth method was requested and return the body and headers
+    const {
+      body,
+      headers,
+      options = { statusCode: 200 },
+    } = await this[method]()
 
-      return this._buildResponseWithCorsHeaders(
-        this._ok(body, headers, options),
-        corsHeaders
-      )
+    return this._buildResponseWithCorsHeaders(
+      this._ok(body, headers, options),
+      corsHeaders
+    )
+    /*
     } catch (e) {
       if (e instanceof WrongVerbError) {
         return this._buildResponseWithCorsHeaders(this._notFound(), corsHeaders)
@@ -333,19 +339,12 @@ export class AuthHandler {
           corsHeaders
         )
       }
-    }
+    }*/
   }
 
   async forgotPassword(): Promise<AuthMethodReturn> {
     const { email } = this.params
-
-    // was the username sent in at all?
-    if (!email || email.trim() === '') {
-      throw new UsernameRequiredError(
-        this.options.forgotPassword?.errors?.usernameRequired ||
-          `Username is required`
-      )
-    }
+    this._validateField(email, new EmailRequiredError())
     let user
 
     try {
@@ -358,10 +357,7 @@ export class AuthHandler {
     }
 
     if (!user) {
-      throw new UsernameNotFoundError(
-        this.options.forgotPassword?.errors?.usernameNotFound ||
-          `Username '${email} not found`
-      )
+      throw new UsernameNotFoundError()
     }
     const tokenExpires = new Date()
     tokenExpires.setSeconds(
@@ -436,17 +432,8 @@ export class AuthHandler {
   async resetPassword() {
     const { password, resetToken } = this.params
 
-    // is the resetToken present?
-    if (resetToken == null || String(resetToken).trim() === '') {
-      throw new ResetTokenRequiredError(
-        this.options.resetPassword?.errors?.resetTokenRequired
-      )
-    }
-
-    // is password present?
-    if (password == null || String(password).trim() === '') {
-      throw new PasswordRequiredError()
-    }
+    this._validateField(resetToken, new ResetTokenRequiredError())
+    this._validateField(password, new PasswordRequiredError())
 
     let user = await this._findUserByToken(resetToken as string)
     const [hashedPassword] = this._hashPassword(password, user.salt)
@@ -455,9 +442,7 @@ export class AuthHandler {
       !this.options.resetPassword.allowReusedPassword &&
       user.hashedPassword === hashedPassword
     ) {
-      throw new ReusedPasswordError(
-        this.options.resetPassword?.errors?.reusedPassword
-      )
+      throw new ReusedPasswordError()
     }
 
     try {
@@ -512,14 +497,8 @@ export class AuthHandler {
 
   async validateResetToken(): Promise<AuthMethodReturn> {
     // is token present at all?
-    if (
-      this.params.resetToken == null ||
-      String(this.params.resetToken).trim() === ''
-    ) {
-      throw new ResetTokenRequiredError(
-        this.options.resetPassword?.errors?.resetTokenRequired
-      )
-    }
+
+    this._validateField(this.params.resetToken, new ResetTokenRequiredError())
 
     const user = await this._findUserByToken(this.params.resetToken as string)
 
@@ -639,17 +618,13 @@ export class AuthHandler {
 
     // user not found with the given token
     if (!user) {
-      throw new ResetTokenInvalidError(
-        this.options.resetPassword?.errors?.resetTokenInvalid
-      )
+      throw new ResetTokenInvalidError()
     }
 
     // token has expired
     if (user.resetTokenExpiresAt < tokenExpires) {
       await this._clearResetToken(user.id)
-      throw new ResetTokenExpiredError(
-        this.options.resetPassword?.errors?.resetTokenExpired
-      )
+      throw new ResetTokenExpiredError()
     }
 
     return user
@@ -675,16 +650,8 @@ export class AuthHandler {
   // verifies that a username and password are correct, and returns the user if so
   async _verifyUser(email: string | undefined, password: string | undefined) {
     // do we have all the query params we need to check the user?
-    if (
-      !email ||
-      email.toString().trim() === '' ||
-      !password ||
-      password.toString().trim() === ''
-    ) {
-      throw new UsernameAndPasswordRequiredError(
-        this.options.login?.errors?.usernameOrPasswordMissing
-      )
-    }
+    this._validateField(email, new EmailRequiredError())
+    this._validateField(password, new PasswordRequiredError())
 
     try {
       // does user exist?
@@ -692,10 +659,7 @@ export class AuthHandler {
         where: { email: email },
       })
       if (!user) {
-        throw new UserNotFoundError(
-          email,
-          this.options.login?.errors?.usernameNotFound
-        )
+        throw new UserNotFoundError()
       }
 
       // is password correct?
@@ -703,10 +667,7 @@ export class AuthHandler {
       if (hashedPassword === user.hashedPassword) {
         return user
       } else {
-        throw new IncorrectPasswordError(
-          email,
-          this.options.login?.errors?.incorrectPassword
-        )
+        throw new IncorrectPasswordError()
       }
     } catch (e) {
       console.log(e)
@@ -737,8 +698,8 @@ export class AuthHandler {
   async _createUser() {
     const { email, password } = this.params
     if (
-      this._validateField('email', email) &&
-      this._validateField('password', password)
+      this._validateField(email, new EmailRequiredError()) &&
+      this._validateField(password, new PasswordRequiredError())
     ) {
       /*
       const user = await db.user.findUnique({
@@ -768,10 +729,7 @@ export class AuthHandler {
         if (e instanceof Prisma.PrismaClientKnownRequestError) {
           // The .code property can be accessed in a type-safe manner
           if (e.code === 'P2002') {
-            throw new DuplicateUsernameError(
-              email,
-              this.options.signup?.errors?.usernameTaken
-            )
+            throw new DuplicateEmailError()
           }
         }
         throw e
@@ -810,13 +768,10 @@ export class AuthHandler {
 
   // checks that a single field meets validation requirements and
   // currently checks for presense only
-  _validateField(name: string, value: string | undefined): value is string {
+  _validateField(value: unknown, error: Error): value is string {
     // check for presense
-    if (!value || value.trim() === '') {
-      throw new FieldRequiredError(
-        name,
-        this.options.signup?.errors?.fieldMissing
-      )
+    if (!value || String(value).trim() === '') {
+      throw error
     } else {
       return true
     }

@@ -1,3 +1,9 @@
+import {
+  BadRequestException,
+  MethodNotAllowedException,
+  UnauthorizedException,
+} from '../httpExceptionMiddleware'
+
 export class NoSessionSecretError extends Error {
   constructor() {
     super(
@@ -14,39 +20,9 @@ export class NoSessionExpirationError extends Error {
     this.name = 'NoSessionExpirationError'
   }
 }
-
-export class NoLoginHandlerError extends Error {
-  constructor() {
-    super('dbAuth requires a login handler in order to log in a user')
-    this.name = 'NoLoginHandlerError'
-  }
-}
-
-export class NoSignupHandlerError extends Error {
-  constructor() {
-    super('dbAuth requires a signup handler in order to create new users')
-    this.name = 'NoSignupHandlerError'
-  }
-}
-
-export class NoForgotPasswordHandlerError extends Error {
-  constructor() {
-    super('dbAuth requires a forgot password handler in order to notify user')
-    this.name = 'NoForgotPasswordHandlerError'
-  }
-}
-
-export class NoResetPasswordHandlerError extends Error {
-  constructor() {
-    super('dbAuth requires a reset password handler in order to notify user')
-    this.name = 'NoResetPasswordHandlerError'
-  }
-}
-
-export class UnknownAuthMethodError extends Error {
+export class UnknownAuthMethodError extends MethodNotAllowedException {
   constructor(name: string) {
-    super(`Unknown auth method '${name}'`)
-    this.name = 'UnknownAuthMethodError'
+    super({ code: 100, msg: `Unknown auth method '${name}'` })
   }
 }
 
@@ -57,34 +33,24 @@ export class WrongVerbError extends Error {
   }
 }
 
-export class NotLoggedInError extends Error {
+export class NotLoggedInError extends UnauthorizedException {
   constructor() {
-    super(`Cannot retrieve user details without being logged in`)
-    this.name = 'NotLoggedInError'
+    super({
+      code: 101,
+      msg: 'Cannot retrieve user details without being logged in',
+    })
   }
 }
 
-export class UserNotFoundError extends Error {
-  constructor(
-    username: string | undefined = undefined,
-    message: string | undefined = 'Username ${username} not found'
-  ) {
-    if (username) {
-      super(message.replace(/\$\{username\}/g, username))
-    } else {
-      super(`User not found`)
-    }
-
-    this.name = 'UserNotFoundError'
+export class UserNotFoundError extends BadRequestException {
+  constructor() {
+    super({ code: 102, msg: 'User not found' })
   }
 }
 
-export class UsernameAndPasswordRequiredError extends Error {
-  constructor(
-    message: string | undefined = 'Both username and password are required'
-  ) {
-    super(message)
-    this.name = 'UsernameAndPasswordRequiredError'
+export class UsernameAndPasswordRequiredError extends BadRequestException {
+  constructor() {
+    super({ code: 103, msg: 'Both username and password are required' })
   }
 }
 
@@ -96,7 +62,7 @@ export class NoUserIdError extends Error {
     this.name = 'NoUserIdError'
   }
 }
-
+/*
 export class FieldRequiredError extends Error {
   constructor(
     name: string,
@@ -106,87 +72,70 @@ export class FieldRequiredError extends Error {
     this.name = 'FieldRequiredError'
   }
 }
-
-export class DuplicateUsernameError extends Error {
-  constructor(
-    username: string,
-    message: string | undefined = 'Username `${username}` already in use'
-  ) {
-    super(message.replace(/\$\{username\}/g, username))
-    this.name = 'DuplicateUsernameError'
-  }
-}
-
-export class IncorrectPasswordError extends Error {
-  constructor(
-    username: string,
-    message: string | undefined = 'Incorrect password for ${username}'
-  ) {
-    super(message.replace(/\$\{username\}/g, username))
-    this.name = 'IncorrectPasswordError'
-  }
-}
-
-export class CsrfTokenMismatchError extends Error {
+*/
+export class DuplicateEmailError extends BadRequestException {
   constructor() {
-    super(`CSRF token mismatch`)
-    this.name = 'CsrfTokenMismatchError'
+    super({ code: 105, msg: 'Email already in use' })
   }
 }
 
-export class SessionDecryptionError extends Error {
+export class IncorrectPasswordError extends BadRequestException {
   constructor() {
-    super('Session has potentially been tampered with')
-    this.name = 'SessionDecryptionError'
+    super({ code: 106, msg: 'Incorrect password' })
   }
 }
 
-export class UsernameRequiredError extends Error {
-  constructor(message = 'Username is required') {
-    super(message)
-    this.name = 'UsernameRequiredError'
+export class CsrfTokenMismatchError extends BadRequestException {
+  constructor() {
+    super({ code: 107, msg: 'CSRF token mismatch' })
   }
 }
 
-export class PasswordRequiredError extends Error {
-  constructor(message = 'Password is required') {
-    super(message)
-    this.name = 'PasswordRequiredError'
+export class SessionDecryptionError extends BadRequestException {
+  constructor() {
+    super({ code: 108, msg: 'Session has potentially been tampered with' })
   }
 }
 
-export class UsernameNotFoundError extends Error {
-  constructor(message = 'Username not found') {
-    super(message)
-    this.name = 'UsernameNotFoundError'
+export class EmailRequiredError extends BadRequestException {
+  constructor() {
+    super({ code: 109, msg: 'Email is required' })
   }
 }
 
-export class ResetTokenExpiredError extends Error {
-  constructor(message = 'resetToken is expired') {
-    super(message)
-    this.name = 'ResetTokenExpiredError'
+export class PasswordRequiredError extends BadRequestException {
+  constructor() {
+    super({ code: 110, msg: 'Password is required' })
   }
 }
 
-export class ResetTokenInvalidError extends Error {
-  constructor(message = 'resetToken is invalid') {
-    super(message)
-    this.name = 'ResetTokenInvalidError'
+export class UsernameNotFoundError extends BadRequestException {
+  constructor() {
+    super({ code: 111, msg: 'Username not found' })
   }
 }
 
-export class ResetTokenRequiredError extends Error {
-  constructor(message = 'resetToken is required') {
-    super(message)
-    this.name = 'ResetTokenRequiredError'
+export class ResetTokenExpiredError extends BadRequestException {
+  constructor() {
+    super({ code: 112, msg: 'resetToken is expired' })
   }
 }
 
-export class ReusedPasswordError extends Error {
-  constructor(message = 'Must choose a new password') {
-    super(message)
-    this.name = 'ReusedPasswordError'
+export class ResetTokenInvalidError extends BadRequestException {
+  constructor() {
+    super({ code: 113, msg: 'resetToken is invalid' })
+  }
+}
+
+export class ResetTokenRequiredError extends BadRequestException {
+  constructor() {
+    super({ code: 114, msg: 'ResetTokenRequiredError' })
+  }
+}
+
+export class ReusedPasswordError extends BadRequestException {
+  constructor() {
+    super({ code: 116, msg: 'Must choose a new password' })
   }
 }
 
