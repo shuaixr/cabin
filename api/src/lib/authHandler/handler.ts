@@ -82,10 +82,7 @@ interface AuthHandlerOptions {
    */
   forgotPassword: {
     /* handler: (user: Record<string, unknown>) => Promise<any>*/
-    errors?: {
-      usernameNotFound?: string
-      usernameRequired?: string
-    }
+
     expires: number
   }
   /**
@@ -103,11 +100,7 @@ interface AuthHandlerOptions {
     /**
      * Object containing error strings
      */
-    errors?: {
-      usernameOrPasswordMissing?: string
-      usernameNotFound?: string
-      incorrectPassword?: string
-    }
+
     /**
      * How long a user will remain logged in, in seconds
      */
@@ -119,35 +112,10 @@ interface AuthHandlerOptions {
   resetPassword: {
     /*handler: (user: Record<string, unknown>) => Promise<any>*/
     allowReusedPassword: boolean
-    errors?: {
-      resetTokenExpired?: string
-      resetTokenInvalid?: string
-      resetTokenRequired?: string
-      reusedPassword?: string
-    }
   }
   /**
    * Object containing login options
    */
-  signup: {
-    /**
-     * Whatever you want to happen to your data on new user signup. Redwood will
-     * check for duplicate usernames before calling this handler. At a minimum
-     * you need to save the `username`, `hashedPassword` and `salt` to your
-     * user table. `userAttributes` contains any additional object members that
-     * were included in the object given to the `signUp()` function you got
-     * from `useAuth()`
-     */
-    /*
-    handler: (signupHandlerOptions: SignupHandlerOptions) => Promise<any>*/
-    /**
-     * Object containing error strings
-     */
-    errors?: {
-      fieldMissing?: string
-      usernameTaken?: string
-    }
-  }
 
   /**
    * CORS settings, same as in createGraphqlHandler
